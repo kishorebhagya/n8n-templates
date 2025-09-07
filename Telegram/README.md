@@ -32,6 +32,8 @@ A Telegram bot that lets users send an Instagram link (post/reel/stories) and re
 ## Environment Variables
 - [YOUR_X_IG_APP_ID]
 - [YOUR_IG_COOKIE]
+  
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/acb0f2bd-67c3-4752-b122-d8c5bcf99686" />
 
 ## Usage
 - Send a message containing a public Instagram post/reel URL, e.g.:
