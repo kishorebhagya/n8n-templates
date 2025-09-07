@@ -1,0 +1,726 @@
+{
+  "name": "IG Media Downloader",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.text }}",
+              "operation": "contains",
+              "value2": "instagram.com"
+            }
+          ]
+        }
+      },
+      "id": "94868715-d4d2-40d9-9bf8-9ff50aab7391",
+      "name": "Check Instagram Link",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -2688,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract Instagram URL from message\nconst message = $input.first().json.message.text;\nconst chatId = $input.first().json.message.chat.id;\nconst messageId = $input.first().json.message.message_id;\n\n// Regex to find Instagram URLs\nconst instagramRegex = /https?:\\/\\/(www\\.)?(instagram\\.com|instagr\\.am)\\/[^\\s]+/gi;\nconst matches = message.match(instagramRegex);\n\nif (!matches || matches.length === 0) {\n  return {\n    json: {\n      error: 'No valid Instagram URL found',\n      chatId,\n      messageId\n    }\n  };\n}\n\n// Work with the first matched URL\nconst url = matches[0];\nlet type = null;\nlet shortcode = null;\nlet username = null;\n\nif (/\\/p\\//.test(url)) {\n  type = \"post\";\n  const m = url.match(/\\/p\\/([a-zA-Z0-9_-]+)/);\n  shortcode = m ? m[1] : null;\n} else if (/\\/reel[s]?\\//.test(url)) {\n  type = \"reel\";\n  const m = url.match(/\\/reel[s]?\\/([a-zA-Z0-9_-]+)/);\n  shortcode = m ? m[1] : null;\n} else if (/\\/tv\\//.test(url)) {\n  type = \"igtv\";\n  const m = url.match(/\\/tv\\/([a-zA-Z0-9_-]+)/);\n  shortcode = m ? m[1] : null;\n} else if (/\\/stories\\//.test(url)) {\n  type = \"story\";\n  const m = url.match(/\\/stories\\/([^/]+)/); // capture username\n  username = m ? m[1] : null;\n} else {\n  // Profile URL\n  const m = url.match(/instagram\\.com\\/([^/]+)/);\n  if (m && m[1] && ![\"p\", \"reel\", \"reels\", \"tv\", \"stories\"].includes(m[1])) {\n    type = \"profile\";\n    username = m[1];\n  }\n}\n\nreturn {\n  json: {\n    url,\n    type,\n    shortcode,\n    username,\n    chatId,\n    messageId\n  }\n};"
+      },
+      "id": "72c6813c-6090-4ab7-b080-745090555ff7",
+      "name": "Extract Instagram URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2432,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "8209ed9c-47d8-49e3-bbfd-acf0bdf8c91e",
+      "name": "Download Media File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -1216,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Extract Instagram URL').first().json.chatId }}",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "id": "c9eb3cee-fd4e-4626-b3a7-37a31c8dcdb4",
+      "name": "Send Photo",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        304
+      ],
+      "webhookId": "38ffd929-26af-43f0-85a1-fb763e733cf9",
+      "credentials": {
+        "telegramApi": {
+          "id": "YPB71rTimC9j1Mjg",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendVideo",
+        "chatId": "={{ $('Extract Instagram URL').first().json.chatId }}",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "id": "d275bec9-82e5-41b1-90aa-6ba09c710650",
+      "name": "Send Video",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        96
+      ],
+      "webhookId": "e9b33664-c95d-48c9-ac8a-6a7c4786e18e",
+      "credentials": {
+        "telegramApi": {
+          "id": "YPB71rTimC9j1Mjg",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "👋 Hi! Send me an Instagram URL and I'll download the media for you!\n\nSupported formats:\n\n📸 Photos\n🎥 Videos\n🖼️ Carousel posts (multiple images/videos)\n📖 Stories\n\nExamples:\n\nReel: https://www.instagram.com/reel/CtjoC2BNsB2\n\nPost: https://www.instagram.com/p/DODA9dMjKXZ\n\nStories: https://www.instagram.com/stories/9gag or https://www.instagram.com/9gag",
+        "additionalFields": {}
+      },
+      "id": "7743ffee-2781-475f-b388-6992c2fdf2f0",
+      "name": "Send Help Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -2432,
+        448
+      ],
+      "webhookId": "a76ed6e8-53dd-4621-8cc0-805f2d9384a0",
+      "credentials": {
+        "telegramApi": {
+          "id": "YPB71rTimC9j1Mjg",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.instagram.com/api/graphql",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "variables",
+              "value": "={{ JSON.stringify({ shortcode: $json.shortcode }) }}"
+            },
+            {
+              "name": "doc_id",
+              "value": "10015901848480474"
+            },
+            {
+              "name": "lsd",
+              "value": "AVqbxe3J_YA"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            },
+            {
+              "name": "X-IG-App-ID",
+              "value": "[YOUR_X_IG_APP_ID]"
+            },
+            {
+              "name": "X-FB-LSD",
+              "value": "AVqbxe3J_YA"
+            },
+            {
+              "name": "X-ASBD-ID",
+              "value": "129477"
+            },
+            {
+              "name": "Sec-Fetch-Site",
+              "value": "same-origin"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "97b5bfdb-cff2-44b0-8501-8d11484adc36",
+      "name": "Instagram GraphQL API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2064,
+        320
+      ],
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractUrls(items) {\n  const sidecar = items?.edge_sidecar_to_children?.edges;\n  \n  if (sidecar) {\n    // Handle carousel/multi-image posts\n    return sidecar.map(item => {\n      if (item.node.is_video) {\n        return {url: item.node.video_url, isVideo: true, count: sidecar?.length}\n      }\n      return {url: item.node.display_resources[2].src, isVideo: false, count: sidecar?.length}\n    });\n  }\n  \n  if (items?.is_video) {\n    // Handle video posts\n    return [{url: items.video_url, isVideo: true, count: 1}];\n  }\n  \n  // Handle single image posts\n  return [{url: items?.display_resources?.[2]?.src, isVideo: false, count: 1}];\n}\n\n// Get the response from Instagram GraphQL API\nconst response = JSON.parse($input.first().json.data);\n\n// Extract the media data\nconst items = response?.data?.xdt_shortcode_media;\n\nif (!items) {\n  throw new Error('No media data found!');\n}\n\nconst urls = extractUrls(items);\n\nreturn urls;"
+      },
+      "id": "ef85b5bf-ee22-45f7-8fdb-7cc08d6d885f",
+      "name": "Process Instagram Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1696,
+        320
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dea8b035-76a1-41f8-b596-fd1a4bfa45e3",
+              "leftValue": "={{ $json.isVideo.toString() }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -960,
+        320
+      ],
+      "id": "fccd84f9-5c26-4e6b-9d0e-7a8fc6bd693f",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "content": "## IG Downloader Reference\n\nRepo Link\nhttps://github.com/ahmedrangel/instagram-media-scraper\n\nGraphql Scraper\nhttps://github.com/ahmedrangel/instagram-media-scraper/blob/main/scraper_graphql.js\n",
+        "height": 224,
+        "width": 448
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3424,
+        192
+      ],
+      "typeVersion": 1,
+      "id": "cd3f31b7-71b0-49dc-8f57-387469e7def4",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "operation": "sendChatAction",
+        "chatId": "={{ $json.message.chat.id }}"
+      },
+      "id": "2d2d9eae-6c71-49e3-9be1-e81bba8d2ed0",
+      "name": "Send Typing Action",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -2432,
+        64
+      ],
+      "webhookId": "d3b4a651-ab0d-469c-9a85-761955cf6a47",
+      "credentials": {
+        "telegramApi": {
+          "id": "YPB71rTimC9j1Mjg",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": "={{ $json.count }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1440,
+        304
+      ],
+      "id": "5afb97f1-5cf6-4080-af03-d913c6510190",
+      "name": "Loop Over Items",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "74848b60-0b62-4157-b81d-deaa512a1b03",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "story",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "88c7b843-aad5-422e-9026-783fbf868037",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "profile",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2256,
+        256
+      ],
+      "id": "235cfc18-9566-44c2-abb6-53e013151e67",
+      "name": "Check URL Type"
+    },
+    {
+      "parameters": {
+        "url": "https://i.instagram.com/api/v1/users/web_profile_info",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "username",
+              "value": "={{ $json.username }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
+            },
+            {
+              "name": "X-IG-App-ID",
+              "value": "[YOUR_X_IG_APP_ID]"
+            },
+            {
+              "name": "Cookie",
+              "value": "[YOUR_IG_COOKIE]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "68492bb0-55ff-4810-aab3-2cfcd1fdd8ba",
+      "name": "Instagram Web Profile API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2064,
+        80
+      ],
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "=https://i.instagram.com/api/v1/feed/user/{{$json.data.user.id}}/story/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
+            },
+            {
+              "name": "X-IG-App-ID",
+              "value": "[YOUR_X_IG_APP_ID]"
+            },
+            {
+              "name": "Cookie",
+              "value": "[YOUR_IG_COOKIE]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d9a5847c-9e4a-4b2a-bc7a-07ee6ceea3f1",
+      "name": "Instagram Story API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1872,
+        80
+      ],
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractUrls(items) {\n  return items.map(item => {\n     if (item.video_versions) {\n       return {url: item.video_versions[2].url, count: items?.length, isVideo: true}\n     }\n      return {url: item.image_versions2.candidates\n[0].url, count: items?.length, isVideo: false}\n  });\n}\n\n\n// Get the response from Instagram GraphQL API\nconst response = $input.first().json.reel;\nconst isPrivate = $('Instagram Web Profile API').first().json.data.user.is_private;\n// Extract the media data\nconst items = response?.items;\n\nif (!items && isPrivate) {\n  throw new Error('Private account detected!');\n}\n\nif (!items && !isPrivate) {\n  throw new Error('No story data found!');\n}\n\nconst urls = extractUrls(items);\n\nreturn urls;"
+      },
+      "id": "5b28b43c-f342-4106-999f-6f4de59d05d9",
+      "name": "Process Instagram Story Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1632,
+        64
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract Instagram URL').first().json.chatId }}",
+        "text": "=❌ Error: {{ $json.error.replace(/\\s*\\[.*?\\]\\s*/g, '') }}",
+        "additionalFields": {}
+      },
+      "id": "e5a9d92c-4bac-42c7-bff4-2a91f1725765",
+      "name": "Send Error Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -1440,
+        -144
+      ],
+      "webhookId": "b52c44bc-7cc2-4109-b97f-8bcf41354d12",
+      "credentials": {
+        "telegramApi": {
+          "id": "YPB71rTimC9j1Mjg",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract Instagram URL').first().json.chatId }}",
+        "text": "=❌ Error: Something went wrong!",
+        "additionalFields": {}
+      },
+      "id": "82dd2439-ed83-4200-a796-f2ce2cdf20d7",
+      "name": "Send API Error Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -1632,
+        -144
+      ],
+      "webhookId": "b52c44bc-7cc2-4109-b97f-8bcf41354d12",
+      "credentials": {
+        "telegramApi": {
+          "id": "YPB71rTimC9j1Mjg",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2896,
+        256
+      ],
+      "id": "c148c027-1273-420f-be6e-0fa319b735c8",
+      "name": "Telegram Trigger",
+      "webhookId": "20bc3863-587a-43a7-83f4-21b1b67989c2",
+      "credentials": {
+        "telegramApi": {
+          "id": "YPB71rTimC9j1Mjg",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Check Instagram Link": {
+      "main": [
+        [
+          {
+            "node": "Extract Instagram URL",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Typing Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Help Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Instagram URL": {
+      "main": [
+        [
+          {
+            "node": "Check URL Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Media File": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Photo": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Video": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram GraphQL API": {
+      "main": [
+        [
+          {
+            "node": "Process Instagram Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send API Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Instagram Data": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send Video",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Download Media File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check URL Type": {
+      "main": [
+        [
+          {
+            "node": "Instagram Web Profile API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Instagram GraphQL API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram Web Profile API": {
+      "main": [
+        [
+          {
+            "node": "Instagram Story API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send API Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram Story API": {
+      "main": [
+        [
+          {
+            "node": "Process Instagram Story Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send API Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Instagram Story Data": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Instagram Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e6e91a45-f070-46c7-a902-59a8aca07336",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "03a8b3cb9a86fb4ddef208567232dc6cb09884ea9e8256083101ec5b227cd121"
+  },
+  "id": "oRtRo5VnX0B95qHV",
+  "tags": []
+}
